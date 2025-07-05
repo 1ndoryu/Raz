@@ -1,0 +1,17 @@
+/runtime
+/.idea
+/.vscode
+/vendor
+*.log
+.env
+/tests/tmp
+/tests/.phpunit.result.cache
+copiar.py
+/status
+.env
+documentacion-api.md
+previewApi.md
+status.md
+public/uploads/
+composer.lock
+.history

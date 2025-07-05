@@ -179,4 +179,225 @@ class TareaController
 
         $tarea->save();
     }
+
+    /**
+     * Cambia la prioridad (importancia) de una tarea.
+     * Ruta: PUT /tareas/{id}/prioridad
+     */
+    public function cambiarPrioridad(Request $request, int $id): Response
+    {
+        $tarea = Tarea::find($id);
+        if (!$tarea) {
+            return Response::json([
+                'success' => false,
+                'error'   => 'Tarea no encontrada.',
+            ], 404);
+        }
+
+        $nuevaPrioridad = $request->input('importancia');
+
+        // Permitir tanto números (1-5) como textos (baja|media|alta)
+        $valoresPermitidos = ['baja', 'media', 'alta', 1, 2, 3, 4, 5];
+        if (!in_array($nuevaPrioridad, $valoresPermitidos, true)) {
+            return Response::json([
+                'success' => false,
+                'error'   => 'Valor de prioridad no permitido.',
+            ], 422);
+        }
+
+        $tarea->importancia = $nuevaPrioridad;
+        $tarea->save();
+
+        return Response::json([
+            'success' => true,
+            'data'    => $tarea,
+        ]);
+    }
+
+    /**
+     * Archiva o desarchiva una tarea y todas sus subtareas.
+     * Ruta: POST /tareas/{id}/archivar
+     */
+    public function archivar(Request $request, int $id): Response
+    {
+        $tarea = Tarea::with('subtareas')->find($id);
+        if (!$tarea) {
+            return Response::json([
+                'success' => false,
+                'error'   => 'Tarea no encontrada.',
+            ], 404);
+        }
+
+        // Nuevo estado (toggle entre pendiente <-> archivado)
+        $nuevoEstado = $tarea->estado === 'archivado' ? 'pendiente' : 'archivado';
+        $this->aplicarEstadoRecursivo($tarea, $nuevoEstado);
+
+        return Response::json([
+            'success' => true,
+            'data'    => [
+                'mensaje' => 'Tarea y subtareas actualizadas.',
+                'estado'  => $nuevoEstado,
+            ],
+        ]);
+    }
+
+    /**
+     * Aplica un estado a la tarea y sus descendientes de forma recursiva.
+     */
+    private function aplicarEstadoRecursivo(Tarea $tarea, string $estado): void
+    {
+        $tarea->estado    = $estado;
+        $tarea->archivado = $estado === 'archivado';
+        $tarea->save();
+
+        foreach ($tarea->subtareas as $sub) {
+            $this->aplicarEstadoRecursivo($sub, $estado);
+        }
+    }
+
+    /**
+     * Cambia la frecuencia de un hábito.
+     * Ruta: PUT /tareas/{id}/frecuencia
+     */
+    public function cambiarFrecuencia(Request $request, int $id): Response
+    {
+        $tarea = Tarea::find($id);
+        if (!$tarea) {
+            return Response::json([
+                'success' => false,
+                'error'   => 'Tarea no encontrada.',
+            ], 404);
+        }
+
+        if ($tarea->tipo !== 'habito' && $tarea->tipo !== 'habito flexible' && $tarea->tipo !== 'habito rigido') {
+            return Response::json([
+                'success' => false,
+                'error'   => 'Solo se puede cambiar la frecuencia a tareas de tipo hábito.',
+            ], 422);
+        }
+
+        $frecuencia = (int) $request->input('frecuencia', 0);
+        if ($frecuencia <= 0) {
+            return Response::json([
+                'success' => false,
+                'error'   => 'La frecuencia debe ser un número entero positivo.',
+            ], 422);
+        }
+
+        $tarea->frecuencia   = $frecuencia;
+        $hoy                 = date('Y-m-d');
+        $tarea->fechaProxima = date('Y-m-d', strtotime("$hoy +$frecuencia days"));
+        $tarea->save();
+
+        return Response::json([
+            'success' => true,
+            'data'    => $tarea,
+        ]);
+    }
+
+    /**
+     * Reasigna el padre de una tarea, validando para evitar ciclos.
+     * Ruta: PUT /tareas/{id}/padre
+     */
+    public function asignarPadre(Request $request, int $id): Response
+    {
+        $tareaHija = Tarea::find($id);
+        if (!$tareaHija) {
+            return Response::json([
+                'success' => false,
+                'error'   => 'Tarea hija no encontrada.',
+            ], 404);
+        }
+
+        $padreId = (int) $request->input('padre_id', 0);
+        if ($padreId === 0) {
+            // Permitir quitar el padre estableciendo null
+            $tareaHija->padre_id = null;
+            $tareaHija->save();
+            return Response::json([
+                'success' => true,
+                'data'    => $tareaHija,
+            ]);
+        }
+
+        if ($padreId === $id) {
+            return Response::json([
+                'success' => false,
+                'error'   => 'Una tarea no puede ser su propio padre.',
+            ], 422);
+        }
+
+        $tareaPadre = Tarea::find($padreId);
+        if (!$tareaPadre) {
+            return Response::json([
+                'success' => false,
+                'error'   => 'Tarea padre no encontrada.',
+            ], 404);
+        }
+
+        if ($this->creariaCiclo($tareaPadre, $tareaHija->id)) {
+            return Response::json([
+                'success' => false,
+                'error'   => 'Asignar este padre crearía un ciclo en la jerarquía.',
+            ], 422);
+        }
+
+        // Asignar nuevo padre y limpiar sesion si existía
+        $tareaHija->padre_id = $padreId;
+        $tareaHija->sesion   = null;
+        $tareaHija->save();
+
+        return Response::json([
+            'success' => true,
+            'data'    => $tareaHija,
+        ]);
+    }
+
+    /**
+     * Determina si asignar un padre crearía un ciclo.
+     */
+    private function creariaCiclo(Tarea $posiblePadre, int $idHija): bool
+    {
+        $actual = $posiblePadre;
+        while ($actual) {
+            if ($actual->id === $idHija) {
+                return true;
+            }
+            $actual = $actual->padre;
+        }
+        return false;
+    }
+
+    /**
+     * Asigna una tarea a una sección (sesion) específica.
+     * Ruta: PUT /tareas/{id}/seccion
+     */
+    public function asignarSeccion(Request $request, int $id): Response
+    {
+        $tarea = Tarea::find($id);
+        if (!$tarea) {
+            return Response::json([
+                'success' => false,
+                'error'   => 'Tarea no encontrada.',
+            ], 404);
+        }
+
+        $seccion = trim($request->input('sesion', ''));
+        if ($seccion === '') {
+            return Response::json([
+                'success' => false,
+                'error'   => 'La sección es obligatoria.',
+            ], 422);
+        }
+
+        // Si tenía padre, lo quitamos
+        $tarea->padre_id = null;
+        $tarea->sesion   = $seccion;
+        $tarea->save();
+
+        return Response::json([
+            'success' => true,
+            'data'    => $tarea,
+        ]);
+    }
 } 

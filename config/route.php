@@ -16,6 +16,21 @@ Route::group('/tareas', function () {
 
     // Eliminar tarea
     Route::delete('/{id}', [TareaController::class, 'borrarTarea']);
+
+    // Cambiar prioridad
+    Route::put('/{id}/prioridad', [TareaController::class, 'cambiarPrioridad']);
+
+    // Archivar / desarchivar
+    Route::post('/{id}/archivar', [TareaController::class, 'archivar']);
+
+    // Cambiar frecuencia de hábito
+    Route::put('/{id}/frecuencia', [TareaController::class, 'cambiarFrecuencia']);
+
+    // Asignar padre
+    Route::put('/{id}/padre', [TareaController::class, 'asignarPadre']);
+
+    // Asignar sección
+    Route::put('/{id}/seccion', [TareaController::class, 'asignarSeccion']);
 });
 
 

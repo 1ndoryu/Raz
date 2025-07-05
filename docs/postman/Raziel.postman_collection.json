@@ -1,0 +1,116 @@
+{
+  "info": {
+    "_postman_id": "3c32bdeb-1234-4abc-8901-raziel0001",
+    "name": "Raziel API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Cambiar Prioridad",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/tareas/1/prioridad",
+          "host": ["{{base_url}}"],
+          "path": ["tareas", "1", "prioridad"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"importancia\": \"alta\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Archivar/Desarchivar Tarea",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/tareas/1/archivar",
+          "host": ["{{base_url}}"],
+          "path": ["tareas", "1", "archivar"]
+        }
+      }
+    },
+    {
+      "name": "Cambiar Frecuencia (Hábito)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/tareas/1/frecuencia",
+          "host": ["{{base_url}}"],
+          "path": ["tareas", "1", "frecuencia"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"frecuencia\": 3\n}"
+        }
+      }
+    },
+    {
+      "name": "Asignar Padre",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/tareas/2/padre",
+          "host": ["{{base_url}}"],
+          "path": ["tareas", "2", "padre"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"padre_id\": 1\n}"
+        }
+      }
+    },
+    {
+      "name": "Asignar Sección",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/tareas/1/seccion",
+          "host": ["{{base_url}}"],
+          "path": ["tareas", "1", "seccion"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"sesion\": \"Trabajo\"\n}"
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8787"
+    }
+  ]
+} 

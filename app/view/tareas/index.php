@@ -14,6 +14,8 @@
         ul{list-style:none;padding-left:1rem}
         li.tarea{padding:0.25rem 0;border-bottom:1px solid #ddd}
         .titulo{cursor:pointer}
+        .archivado .titulo{text-decoration:line-through;color:#888}
+        .btn-archivar{margin-left:.5rem;font-size:.8rem}
     </style>
 </head>
 <body>
@@ -36,5 +38,7 @@
 </div>
 
 <script src="/public/js/taskCRUD.js"></script>
+<script src="/public/js/taskProperties.js"></script>
+<script src="/public/js/taskArchive.js"></script>
 </body>
 </html> 

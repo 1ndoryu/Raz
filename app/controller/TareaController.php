@@ -28,7 +28,7 @@ class TareaController
         $tipo        = $request->post('tipo', 'una vez');
         $estado      = $request->post('estado', 'pendiente');
         $frecuencia  = (int) $request->post('frecuencia', 1);
-        $sesion      = $request->post('sesion', null);
+        $seccion     = $request->post('seccion', null);
         $padreId     = (int) $request->post('padre', 0);
         $descripcion = $request->post('descripcion', null);
         $fecha       = $request->post('fecha', date('Y-m-d'));
@@ -41,7 +41,7 @@ class TareaController
             'tipo'        => $tipo,
             'estado'      => $estado,
             'frecuencia'  => $frecuencia,
-            'sesion'      => $sesion,
+            'seccion'     => $seccion,
             'padre_id'    => $padreId > 0 ? $padreId : null,
             'descripcion' => $descripcion,
             'fecha'       => $fecha,
@@ -88,7 +88,7 @@ class TareaController
             'tipo'        => $request->post('tipo', $tarea->tipo),
             'estado'      => $request->post('estado', $tarea->estado),
             'frecuencia'  => (int) $request->post('frecuencia', $tarea->frecuencia),
-            'sesion'      => $request->post('sesion', $tarea->sesion),
+            'seccion'     => $request->post('seccion', $tarea->seccion),
             'descripcion' => $request->post('descripcion', $tarea->descripcion),
             'fecha'       => $request->post('fecha', $tarea->fecha),
             'archivado'   => (bool) $request->post('archivado', $tarea->archivado),
@@ -342,9 +342,9 @@ class TareaController
             ], 422);
         }
 
-        // Asignar nuevo padre y limpiar sesion si existía
+        // Asignar nuevo padre y limpiar seccion si existía
         $tareaHija->padre_id = $padreId;
-        $tareaHija->sesion   = null;
+        $tareaHija->seccion  = null;
         $tareaHija->save();
 
         return Response::json([
@@ -369,7 +369,7 @@ class TareaController
     }
 
     /**
-     * Asigna una tarea a una sección (sesion) específica.
+     * Asigna una tarea a una seccion específica.
      * Ruta: PUT /tareas/{id}/seccion
      */
     public function asignarSeccion(Request $request, int $id): Response
@@ -382,17 +382,17 @@ class TareaController
             ], 404);
         }
 
-        $seccion = trim($request->input('sesion', ''));
+        $seccion = trim($request->input('seccion', ''));
         if ($seccion === '') {
             return Response::json([
                 'success' => false,
-                'error'   => 'La sección es obligatoria.',
+                'error'   => 'La seccion es obligatoria.',
             ], 422);
         }
 
         // Si tenía padre, lo quitamos
         $tarea->padre_id = null;
-        $tarea->sesion   = $seccion;
+        $tarea->seccion  = $seccion;
         $tarea->save();
 
         return Response::json([

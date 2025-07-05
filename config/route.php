@@ -1,6 +1,7 @@
 <?php
 
 use app\controller\TareaController;
+use app\controller\ViewController;
 use Webman\Route;
 
 Route::group('/tareas', function () {
@@ -32,6 +33,8 @@ Route::group('/tareas', function () {
     // Asignar sección
     Route::put('/{id}/seccion', [TareaController::class, 'asignarSeccion']);
 });
+
+Route::get('/', [ViewController::class, 'index']);
 
 
 

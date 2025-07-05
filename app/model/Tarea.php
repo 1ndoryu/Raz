@@ -16,7 +16,7 @@ class Tarea extends Model
         'tipo',
         'estado',
         'padre_id',
-        'sesion',
+        'seccion',
         'frecuencia',
         'descripcion',
         'fecha',

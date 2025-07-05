@@ -28,7 +28,8 @@
     "workerman/webman-framework": "^2.1",
     "monolog/monolog": "^2.0",
     "vlucas/phpdotenv": "^5.6",
-    "illuminate/database": "^12.19"
+    "illuminate/database": "^12.19",
+    "illuminate/events": "^12.19"
   },
   "suggest": {
     "ext-event": "For better performance. "
@@ -50,7 +51,8 @@
     ],
     "pre-package-uninstall": [
       "support\\Plugin::uninstall"
-    ]
+    ],
+    "db:create": "php scripts/create_tables.php"
   },
   "minimum-stability": "dev",
   "prefer-stable": true

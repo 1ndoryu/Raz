@@ -34,10 +34,7 @@ Route::group('/tareas', function () {
     Route::put('/{id}/seccion', [TareaController::class, 'asignarSeccion']);
 });
 
+// Ruta para renombrar una sección entera
+Route::put('/secciones', [TareaController::class, 'renombrarSeccion']);
+
 Route::get('/', [ViewController::class, 'index']);
-
-
-
-
-
-

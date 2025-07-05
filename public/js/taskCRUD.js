@@ -1,29 +1,55 @@
-// Helper central para peticiones AJAX
+// public/js/taskCRUD.js
+
 function enviarAjax(metodo, url, datos = null) {
     const opciones = {
         method: metodo,
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        }
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }
     };
+
     if (datos !== null) {
         opciones.body = JSON.stringify(datos);
     }
+    
+    console.log(`[AJAX Request] -> ${metodo} ${url}`, datos || '');
+
     return fetch(url, opciones)
-        .then(res => res.json())
+        .then(async res => {
+            let payload = null;
+            const textResponse = await res.text();
+            try {
+                if(textResponse) payload = JSON.parse(textResponse);
+            } catch (e) {
+                console.error('[AJAX] Error al parsear JSON:', textResponse);
+                payload = { success: false, error: 'Respuesta inválida del servidor.' };
+            }
+
+            const infoRespuesta = {
+                url,
+                status: res.status,
+                ok: res.ok,
+                payload: payload
+            };
+
+            if (!res.ok) {
+                console.error(`[AJAX Response] <- ${res.status} ${url}`, infoRespuesta);
+                // Si el payload ya tiene un error, lo usamos, si no, creamos uno genérico.
+                return Promise.reject(payload || { success: false, error: `Error HTTP ${res.status}` });
+            }
+            
+            console.log(`[AJAX Response] <- ${res.status} ${url}`, infoRespuesta);
+            return payload || { success: true };
+        })
         .catch(err => {
-            console.error('Error de red', err);
+            console.error(`[AJAX] Fallo de red para ${metodo} ${url}`, err);
             throw err;
         });
 }
 
-// Esperar al DOM cargado
+
 window.addEventListener('DOMContentLoaded', () => {
     const formCrear = document.getElementById('formCrearTarea');
     const listaTareas = document.getElementById('listaTareas');
 
-    // Crear tarea
     if (formCrear) {
         formCrear.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -32,123 +58,123 @@ window.addEventListener('DOMContentLoaded', () => {
             if (titulo === '') return;
 
             try {
-                const respuesta = await enviarAjax('POST', '/tareas', { titulo });
+                const respuesta = await enviarAjax('POST', '/tareas/', { titulo });
                 if (respuesta.success) {
-                    const tareaId = respuesta.data.tareaId;
-                    agregarTareaAlDom({ id: tareaId, titulo });
-                    inputTitulo.value = '';
+                    // Recargar la página para ver la nueva tarea. Es una solución simple y robusta.
+                    window.location.reload();
                 } else {
-                    alert(respuesta.error || 'No se pudo crear la tarea');
+                    console.error('No se pudo crear la tarea:', respuesta.error || 'Error desconocido.');
                 }
             } catch (err) {
-                alert('Error de red');
+                console.error('Error de red al crear la tarea:', err);
             }
         });
     }
 
-    // Delegar eventos en la lista
-    listaTareas.addEventListener('click', (e) => {
-        const objetivo = e.target;
-        // Completar con doble click en el li
-        if (objetivo.closest('li.tarea') && e.detail === 2) {
-            const li = objetivo.closest('li.tarea');
-            completarTarea(li);
-        }
-        // Editar título al hacer click en el span
-        if (objetivo.classList.contains('titulo')) {
-            activarEdicionTítulo(objetivo);
-        }
-    });
+    if (listaTareas) {
+        listaTareas.addEventListener('click', (e) => {
+            const btnCompletar = e.target.closest('.btn-completar');
+            const tituloSpan = e.target.closest('.titulo');
 
-    // Manejar tecla Backspace para borrar cuando el título está vacío
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Backspace') {
-            const elementoActivo = document.activeElement;
-            if (elementoActivo && elementoActivo.classList.contains('titulo')) {
-                const li = elementoActivo.closest('li.tarea');
-                if (li && elementoActivo.innerText.trim() === '') {
-                    // Segunda pulsación borra
-                    if (li.dataset.backspaceCount === '1') {
-                        borrarTarea(li);
-                    } else {
-                        li.dataset.backspaceCount = '1';
-                        setTimeout(() => delete li.dataset.backspaceCount, 500);
+            if (btnCompletar) {
+                const li = btnCompletar.closest('li.tarea');
+                if (li) completarTarea(li);
+            } else if (tituloSpan) {
+                activarEdicionTítulo(tituloSpan);
+            }
+        });
+
+        listaTareas.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace') {
+                const elementoActivo = document.activeElement;
+                if (elementoActivo && elementoActivo.classList.contains('titulo')) {
+                    const li = elementoActivo.closest('li.tarea');
+                    if (li && elementoActivo.innerText.trim() === '') {
+                        if (li.dataset.backspaceCount === '1') {
+                            borrarTarea(li);
+                        } else {
+                            li.dataset.backspaceCount = '1';
+                            setTimeout(() => delete li.dataset.backspaceCount, 800);
+                        }
                     }
                 }
             }
-        }
-    });
-
-    // Funciones auxiliares
-    function agregarTareaAlDom({ id, titulo }) {
-        const ulGeneral = listaTareas.querySelector('h2')?.nextElementSibling || crearSeccionGeneral();
-        const li = document.createElement('li');
-        li.className = 'tarea';
-        li.dataset.tarea = id;
-        const span = document.createElement('span');
-        span.className = 'titulo';
-        span.textContent = titulo;
-        li.appendChild(span);
-        ulGeneral.appendChild(li);
-    }
-
-    function crearSeccionGeneral() {
-        // Si no existe sección "General" la creamos al vuelo
-        const h2 = document.createElement('h2');
-        h2.textContent = 'General';
-        const ul = document.createElement('ul');
-        listaTareas.appendChild(h2);
-        listaTareas.appendChild(ul);
-        return ul;
+        });
     }
 
     async function completarTarea(li) {
-        const id = li.dataset.tarea;
+        const id = li.dataset.tareaId;
+        console.log(`[CRUD] Completando tarea ${id}`);
         try {
             const res = await enviarAjax('POST', `/tareas/${id}/completar`);
             if (res.success) {
                 li.classList.toggle('completada');
             } else {
-                alert(res.error || 'No se pudo completar');
+                console.error(`No se pudo completar la tarea ${id}:`, res.error);
             }
-        } catch (_) { alert('Error de red'); }
+        } catch (err) { console.error(`Error de red al completar tarea ${id}:`, err); }
     }
 
     function activarEdicionTítulo(span) {
+        if (span.isContentEditable) return;
+        const li = span.closest('li.tarea');
+        const id = li.dataset.tareaId;
+        console.log(`[CRUD] Activando edición para tarea ${id}`);
+        
+        const valorOriginal = span.textContent;
         span.contentEditable = 'true';
         span.focus();
 
         const guardarCambios = async () => {
+            span.removeEventListener('blur', guardarCambios);
+            span.removeEventListener('keydown', manejarTeclas);
             span.contentEditable = 'false';
             const nuevoTitulo = span.innerText.trim();
-            const id = span.closest('li.tarea').dataset.tarea;
-            if (nuevoTitulo === '') return;
+            
+            if (nuevoTitulo === '' || nuevoTitulo === valorOriginal) {
+                span.textContent = valorOriginal;
+                console.log(`[CRUD] Edición cancelada o sin cambios para tarea ${id}`);
+                return;
+            }
+
+            console.log(`[CRUD] Guardando nuevo título para tarea ${id}: "${nuevoTitulo}"`);
             try {
                 const res = await enviarAjax('PUT', `/tareas/${id}`, { titulo: nuevoTitulo });
                 if (!res.success) {
-                    alert(res.error || 'No se pudo guardar');
+                    console.error(`No se pudo guardar la tarea ${id}:`, res.error);
+                    span.textContent = valorOriginal;
                 }
-            } catch (_) { alert('Error de red'); }
+            } catch (err) {
+                console.error(`Error de red al guardar tarea ${id}:`, err);
+                span.textContent = valorOriginal;
+            }
         };
-
-        span.addEventListener('blur', guardarCambios, { once: true });
-        span.addEventListener('keydown', (e) => {
+        
+        const manejarTeclas = (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 span.blur();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                span.textContent = valorOriginal;
+                span.blur();
             }
-        }, { once: true });
+        };
+
+        span.addEventListener('blur', guardarCambios);
+        span.addEventListener('keydown', manejarTeclas);
     }
 
     async function borrarTarea(li) {
-        const id = li.dataset.tarea;
+        const id = li.dataset.tareaId;
+        console.log(`[CRUD] Borrando tarea ${id}`);
         try {
             const res = await enviarAjax('DELETE', `/tareas/${id}`);
             if (res.success) {
                 li.remove();
             } else {
-                alert(res.error || 'No se pudo borrar');
+                console.error(`No se pudo borrar la tarea ${id}:`, res.error);
             }
-        } catch (_) { alert('Error de red'); }
+        } catch (err) { console.error(`Error de red al borrar tarea ${id}:`, err); }
     }
 });

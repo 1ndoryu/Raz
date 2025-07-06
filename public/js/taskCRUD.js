@@ -79,6 +79,36 @@ async function enviarAjax(metodo, url, datos = null) {
     }
 }
 
+/**
+ * Encuentra o crea un contenedor de sección en el DOM.
+ * @param {string} nombreSeccion - El nombre de la sección.
+ * @returns {HTMLElement} El elemento del contenedor de la sección.
+ */
+function findOrCreateSectionContainer(nombreSeccion) {
+    const contenedorTareas = document.getElementById('listaTareas');
+    let seccionContainer = contenedorTareas.querySelector(`.seccion-container[data-seccion-nombre="${nombreSeccion}"]`);
+
+    if (!seccionContainer) {
+        console.log(`[CRUD] La sección "${nombreSeccion}" no existe. Creándola dinámicamente.`);
+        seccionContainer = document.createElement('div');
+        seccionContainer.className = 'seccion-container';
+        seccionContainer.dataset.seccionNombre = nombreSeccion;
+        seccionContainer.innerHTML = `<h2>${nombreSeccion}</h2><ul class="tareas-lista"></ul>`;
+
+        // Lógica de inserción ordenada (General primero, Archivado al final)
+        const seccionArchivado = contenedorTareas.querySelector('.seccion-container[data-seccion-nombre="Archivado"]');
+        if (nombreSeccion.toLowerCase() === 'archivado') {
+            contenedorTareas.appendChild(seccionContainer);
+        } else if (seccionArchivado) {
+            contenedorTareas.insertBefore(seccionContainer, seccionArchivado);
+        } else {
+            contenedorTareas.appendChild(seccionContainer);
+        }
+    }
+    return seccionContainer;
+}
+
+
 window.addEventListener('DOMContentLoaded', () => {
     const formCrear = document.getElementById('formCrearTarea');
     const listaTareas = document.getElementById('listaTareas');
@@ -94,34 +124,26 @@ window.addEventListener('DOMContentLoaded', () => {
                 if (respuesta.success && respuesta.data?.html) {
                     TaskForm.limpiar();
 
-                    const htmlNuevaTarea = respuesta.data.html;
-                    const contenedorTareas = document.getElementById('listaTareas');
+                    // Extraer el HTML y determinar la sección de la nueva tarea
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = respuesta.data.html;
+                    const nuevaTareaElement = tempDiv.firstElementChild;
+                    const seccionNombre = nuevaTareaElement.dataset.seccion || 'General';
 
-                    // 1. Quitar el mensaje de "no hay tareas" si existe.
-                    const mensajeVacio = contenedorTareas.querySelector('p');
+                    const contenedorTareas = document.getElementById('listaTareas');
+                    const mensajeVacio = contenedorTareas.querySelector('p:only-child');
                     if (mensajeVacio && mensajeVacio.textContent.includes('Aún no hay tareas')) {
                         mensajeVacio.remove();
                     }
 
-                    // 2. Buscar o crear la sección "General".
-                    let seccionGeneral = contenedorTareas.querySelector('.seccion-container[data-seccion-nombre="General"]');
-                    if (!seccionGeneral) {
-                        seccionGeneral = document.createElement('div');
-                        seccionGeneral.className = 'seccion-container';
-                        seccionGeneral.dataset.seccionNombre = 'General';
-                        seccionGeneral.innerHTML = `<h2>General</h2><ul class="tareas-lista"></ul>`;
-                        // Insertar al principio, o donde corresponda según tu lógica de orden.
-                        contenedorTareas.prepend(seccionGeneral);
-                        console.log('[CRUD] Sección "General" creada dinámicamente.');
-                    }
+                    const seccionContainer = findOrCreateSectionContainer(seccionNombre);
+                    const listaDestino = seccionContainer.querySelector('ul.tareas-lista');
+                    listaDestino.insertAdjacentElement('afterbegin', nuevaTareaElement);
 
-                    // 3. Insertar la nueva tarea.
-                    const listaDestino = seccionGeneral.querySelector('ul.tareas-lista');
-                    listaDestino.insertAdjacentHTML('afterbegin', htmlNuevaTarea);
-                    console.log(`[CRUD] Nueva tarea ${respuesta.data.id} insertada dinámicamente.`);
+                    console.log(`[CRUD] Nueva tarea ${respuesta.data.id} insertada en sección "${seccionNombre}".`);
+
                 } else {
                     const errorMsg = respuesta.error || '[CRUD] La respuesta del servidor no contenía el HTML de la tarea.';
-                    // Loguear el objeto de respuesta completo para una depuración profunda
                     console.error(errorMsg, 'Objeto de respuesta completo:', respuesta);
                     alert('Error al crear tarea: ' + errorMsg + ' (Revisa la consola para más detalles).');
                 }
@@ -173,7 +195,16 @@ window.addEventListener('DOMContentLoaded', () => {
         try {
             const res = await enviarAjax('POST', `/tareas/${id}/completar`);
             if (res.success) {
-                li.classList.toggle('completada');
+                // Si la tarea es un hábito, la respuesta del backend no cambia el estado a 'completada'.
+                // Por lo tanto, recargamos su HTML para reflejar la nueva fecha_proxima y los contadores.
+                if (li.dataset.tipo.includes('habito')) {
+                    const respuesta = await fetch(`/tareas/${id}/html`); // Asumiendo un endpoint que devuelve solo el HTML
+                    const nuevoHtml = await respuesta.text();
+                    li.outerHTML = nuevoHtml;
+                    console.log(`[CRUD] Hábito ${id} actualizado y HTML recargado.`);
+                } else {
+                    li.classList.toggle('completada');
+                }
             } else {
                 console.error(`No se pudo completar la tarea ${id}:`, res.error);
             }

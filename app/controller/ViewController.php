@@ -34,10 +34,23 @@ class ViewController
         // 5. Filtrar para obtener solo las tareas de nivel superior (raíces)
         $rootTasks = $allTasks->whereNull('padre_id');
 
-        // 6. Agrupar las tareas raíz por sección
-        $tareasPorSeccion = $rootTasks->groupBy('seccion');
+        // 6. Agrupar las tareas raíz por sección, tratando las archivadas por separado.
+        $tareasPorSeccion = $rootTasks->groupBy(function ($tarea) {
+            if ($tarea->archivado) {
+                return 'Archivado';
+            }
+            return $tarea->seccion ?: 'General';
+        });
 
-        // 7. Renderizar la vista, pasando los datos y una función helper para recursividad
+        // 7. Ordenar las secciones: General primero, el resto alfabéticamente, y Archivado al final.
+        $tareasPorSeccion = $tareasPorSeccion->sortBy(function ($tareas, $seccion) {
+            if ($seccion === 'General') return -1;
+            if ($seccion === 'Archivado') return 1;
+            return 0;
+        });
+
+
+        // 8. Renderizar la vista, pasando los datos y una función helper para recursividad
         ob_start();
 
         // Hago disponible una función para renderizar una tarea, para poder llamarla recursivamente desde las vistas.

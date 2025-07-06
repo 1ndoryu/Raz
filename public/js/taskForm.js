@@ -1,5 +1,5 @@
 // public/js/taskForm.js
-const TaskForm = (function () {
+const TaskForm = (function() {
     console.log('[Raziel] Módulo de Formulario de Tarea inicializado.');
 
     const state = {
@@ -7,7 +7,7 @@ const TaskForm = (function () {
         importancia: 'media',
         tipo: 'una vez',
         fechaLimite: null,
-        seccion: ''
+        seccion: 'General' // Valor por defecto
     };
 
     // Nodos del DOM
@@ -24,6 +24,11 @@ const TaskForm = (function () {
 
     const sFechaLimite = document.getElementById('sFechaLimite');
     const labelFecha = sFechaLimite.querySelector('.selector-label');
+
+    const sSeccion = document.getElementById('sSeccion');
+    const menuSeccion = document.getElementById('menuSeccion');
+    const labelSeccion = sSeccion.querySelector('.selector-label');
+
 
     // Nodos del Calendario
     const calCont = document.getElementById('calCont');
@@ -44,26 +49,14 @@ const TaskForm = (function () {
         if (!form) return;
         initSelector(sImportancia, menuImportancia, 'importancia', labelImportancia);
         initSelector(sTipo, menuTipo, 'tipo', labelTipo);
+        initSelectorSeccion();
         initCalendario();
     }
 
     function initSelector(selectorEl, menuEl, stateKey, labelEl) {
         selectorEl.addEventListener('click', e => {
             e.stopPropagation();
-            if (menuAbierto && menuAbierto !== menuEl) {
-                menuAbierto.style.display = 'none';
-            }
-            const esVisible = menuEl.style.display === 'block';
-            menuEl.style.display = esVisible ? 'none' : 'block';
-            if (!esVisible) {
-                menuAbierto = menuEl;
-                // Posicionar menú
-                const rect = selectorEl.getBoundingClientRect();
-                menuEl.style.left = `${rect.left}px`;
-                menuEl.style.top = `${rect.bottom + 5}px`;
-            } else {
-                menuAbierto = null;
-            }
+            toggleMenu(menuEl, selectorEl);
         });
 
         menuEl.addEventListener('click', e => {
@@ -78,6 +71,66 @@ const TaskForm = (function () {
             }
         });
     }
+
+    function initSelectorSeccion() {
+        sSeccion.addEventListener('click', e => {
+            e.stopPropagation();
+            poblarMenuSecciones();
+            toggleMenu(menuSeccion, sSeccion);
+        });
+
+        menuSeccion.addEventListener('click', e => {
+            if (e.target.tagName === 'P') {
+                e.stopPropagation();
+                const valor = e.target.dataset.seccion;
+                state.seccion = valor;
+                labelSeccion.textContent = `📁 ${valor}`;
+                console.log(`[Form] Estado actualizado: seccion = ${valor}`);
+                menuSeccion.style.display = 'none';
+                menuAbierto = null;
+            }
+        });
+    }
+
+    function poblarMenuSecciones() {
+        const nombresSecciones = new Set();
+        document.querySelectorAll('.seccion-container').forEach(cont => {
+            const nombre = cont.dataset.seccionNombre;
+            if (nombre && nombre.toLowerCase() !== 'archivado') {
+                nombresSecciones.add(nombre);
+            }
+        });
+
+        if (nombresSecciones.size === 0) {
+            nombresSecciones.add('General');
+        }
+
+        menuSeccion.innerHTML = '';
+        nombresSecciones.forEach(nombre => {
+            const p = document.createElement('p');
+            p.textContent = nombre;
+            p.dataset.seccion = nombre;
+            menuSeccion.appendChild(p);
+        });
+    }
+
+
+    function toggleMenu(menuEl, selectorEl) {
+        if (menuAbierto && menuAbierto !== menuEl) {
+            menuAbierto.style.display = 'none';
+        }
+        const esVisible = menuEl.style.display === 'block';
+        menuEl.style.display = esVisible ? 'none' : 'block';
+        if (!esVisible) {
+            menuAbierto = menuEl;
+            const rect = selectorEl.getBoundingClientRect();
+            menuEl.style.left = `${rect.left}px`;
+            menuEl.style.top = `${rect.bottom + 5}px`;
+        } else {
+            menuAbierto = null;
+        }
+    }
+
 
     function initCalendario() {
         if (trDiasSemana.innerHTML === '') {
@@ -192,7 +245,7 @@ const TaskForm = (function () {
     document.addEventListener('click', e => {
         if (menuAbierto && !menuAbierto.contains(e.target)) {
             const esSelector = e.target.closest('.form-selector');
-            if (!esSelector || (esSelector.id !== sImportancia.id && esSelector.id !== sTipo.id && esSelector.id !== sFechaLimite.id)) {
+            if (!esSelector || !esSelector.contains(menuAbierto.previousElementSibling)) {
                 menuAbierto.style.display = 'none';
                 menuAbierto = null;
             }
@@ -201,16 +254,16 @@ const TaskForm = (function () {
 
     init();
 
-    // API pública del módulo
     return {
         getDatos: () => {
             state.titulo = inputTitulo.value.trim();
-            return {...state};
+            return { ...state
+            };
         },
         limpiar: () => {
             inputTitulo.value = '';
             state.titulo = '';
-            // Opcional: resetear otros estados a sus valores por defecto si se necesita
+            // Resetear otros estados a sus valores por defecto si se necesita
         }
     };
 })();

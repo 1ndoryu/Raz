@@ -41,6 +41,13 @@
         <div class="form-selector" id="sFechaLimite">
             <span class="selector-label">🗓️ Fecha</span>
         </div>
+        
+        <div class="form-selector" id="sSeccion">
+             <span class="selector-label">📁 Sección</span>
+        </div>
+        <div class="form-selector-menu" id="menuSeccion">
+             </div>
+
 
         <div class="cal-contenedor" id="calCont">
             <div class="cal-nav">
@@ -65,12 +72,12 @@
 
 
     <div id="listaTareas">
-        <?php if (empty($tareasPorSeccion)) : ?>
+        <?php if (empty($tareasPorSeccion) || $tareasPorSeccion->isEmpty()) : ?>
             <p>Aún no hay tareas. ¡Crea una para empezar!</p>
         <?php else : ?>
             <?php foreach ($tareasPorSeccion as $seccion => $tareas) : ?>
-                <div class="seccion-container" data-seccion-nombre="<?= htmlspecialchars($seccion ?: 'General') ?>">
-                    <h2><?= htmlspecialchars($seccion ?: 'General') ?></h2>
+                <div class="seccion-container" data-seccion-nombre="<?= htmlspecialchars($seccion) ?>">
+                    <h2><?= htmlspecialchars($seccion) ?></h2>
                     <ul class="tareas-lista">
                         <?php foreach ($tareas as $tarea) : ?>
                             <?php $renderTarea($tarea); ?>

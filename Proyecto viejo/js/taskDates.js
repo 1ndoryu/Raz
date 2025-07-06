@@ -1,206 +1,176 @@
-// public/js/taskDates.js
-(function () {
-    // Evitar que el script se ejecute múltiples veces
-    if (window.taskDatesInitialized) {
-        return;
-    }
-    window.taskDatesInitialized = true;
+// js/taskDates.js
 
-    console.log('[Raziel] Módulo de Fechas de Tarea inicializado.');
+let calMes;
+let calAnio;
+const calNombresMeses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+const calDiasSemanaCabecera = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa', 'Do'];
 
-    const listaTareas = document.getElementById('listaTareas');
-    let activeMenu = null; // Almacena el menú actualmente abierto (contextual o calendario)
-    let globalClickListener = null; // Almacena el listener de clic global para cerrar menús
+let contextoCalendario = {
+    esParaTareaEspecifica: false,
+    idTarea: null,
+    elementoSpanTexto: null,
+    elementoLiTarea: null,
+    elementoDisparador: null,
+    tipoFecha: null // Nuevo: 'limite' o 'proxima'
+};
 
-    /**
-     * Cierra cualquier menú que esté actualmente activo y elimina su listener de clic.
-     */
-    function closeActiveMenu() {
-        if (activeMenu) {
-            activeMenu.remove();
-            activeMenu = null;
-        }
-        if (globalClickListener) {
-            document.removeEventListener('click', globalClickListener, true);
-            globalClickListener = null;
-        }
-    }
+window.iniciarManejadoresFechaLimiteMeta = function() {
+    document.querySelectorAll('.divFechaLimite[data-tarea]').forEach(div => {
+        const listenerExistente = div._manejadorClicFechaLimiteMeta;
+        if (listenerExistente) div.removeEventListener('click', listenerExistente);
 
-    /**
-     * Posiciona un elemento (menú o calendario) cerca de un elemento de anclaje.
-     * @param {HTMLElement} element El elemento a posicionar.
-     * @param {HTMLElement} anchor El elemento de referencia para la posición.
-     */
-    function positionElement(element, anchor) {
-        const rect = anchor.getBoundingClientRect();
-        element.style.position = 'absolute';
-        element.style.top = `${window.scrollY + rect.bottom + 5}px`;
-        element.style.left = `${window.scrollX + rect.left}px`;
-        element.style.zIndex = '1100'; // z-index alto para estar sobre otros elementos
-        document.body.appendChild(element);
-        activeMenu = element;
-    }
+        div._manejadorClicFechaLimiteMeta = function (event) {
+            event.stopPropagation();
+            window.hideAllOpenTaskMenus();
 
-    // Listener principal delegado en la lista de tareas
-    listaTareas.addEventListener('click', e => {
-        const btnFechas = e.target.closest('.btn-gestionar-fechas');
-        if (btnFechas) {
-            e.stopPropagation();
-            closeActiveMenu(); // Cierra cualquier otro menú primero
-            showContextMenu(btnFechas);
-        }
+            const tareaId = this.dataset.tarea;
+            const liTarea = this.closest('.POST-tarea');
+            const fechaActual = liTarea ? liTarea.dataset.fechalimite : null;
+            const spanTexto = this.querySelector('.textoFechaLimite');
+
+            contextoCalendario = {
+                esParaTareaEspecifica: true,
+                idTarea: tareaId,
+                elementoSpanTexto: spanTexto,
+                elementoLiTarea: liTarea,
+                elementoDisparador: this,
+                tipoFecha: 'limite' // Especificamos que es para fechaLimite
+            };
+
+            mostrarCal(this, fechaActual || null);
+        };
+
+        div.addEventListener('click', div._manejadorClicFechaLimiteMeta);
     });
+}
 
-    /**
-     * Muestra el menú contextual para elegir el tipo de fecha a modificar.
-     * @param {HTMLElement} button El botón de fechas que fue presionado.
-     */
-    function showContextMenu(button) {
-        const li = button.closest('li.tarea');
-        const esHabito = li.dataset.tipo.includes('habito');
+window.actualizarFechaLimiteTareaServidorUI = async function(idTarea, nuevaFechaISO, spanDelIconoDisparador, liTarea) {
+    // spanDelIconoDisparador y liTarea no se usarán activamente si reinicias el post,
+    // pero los mantenemos por si alguna lógica futura los necesita o para consistencia.
+    const datos = {tareaId: idTarea, fechaLimite: nuevaFechaISO};
+    let logBase = `actualizarFechaLimiteTareaServidorUI: Tarea ${idTarea}, `;
+    logBase += nuevaFechaISO ? `FechaNueva "${nuevaFechaISO}"` : 'Fecha Borrada';
 
-        const menu = document.createElement('div');
-        menu.className = 'menu-contextual';
+    try {
+        const rta = await enviarAjax('modificarFechaLimiteTarea', datos);
+        let logDetalles = '';
 
-        let menuHtml = `<p data-action="set-fecha" data-tipo="fecha_limite">Fecha Límite</p>`;
-        if (esHabito) {
-            menuHtml += `<p data-action="set-fecha" data-tipo="fecha_proxima">Fecha Próxima</p>`;
+        if (rta.success) {
+            logDetalles += 'Servidor OK. ';
+
+            // No necesitamos actualizar el dataset del liTarea o el atributo 'dif' manualmente aquí,
+            // porque reiniciarPost() obtendrá la información más reciente del servidor.
+            // Tampoco necesitamos tocar el spanDelIconoDisparador ni el display de fecha real.
+
+            // Llamamos a reiniciarPost para actualizar toda la tarea.
+            // Asumimos que 'idTarea' es el mismo que se necesita para reiniciarPost.
+            // Si window.reiniciarPost es asíncrono, puedes usar await.
+            // Si es síncrono o no devuelve una promesa que necesitemos esperar, no hace falta await.
+            await window.reiniciarPost(idTarea, 'tarea');
+            logDetalles += `Se llamó a reiniciarPost(${idTarea}, 'tarea') para actualizar UI.`;
+
+            console.log(logBase + '. ' + logDetalles);
+        } else {
+            logDetalles = `Error Servidor: ${rta.data || 'Desconocido'}`;
+            console.error(logBase + '. ' + logDetalles);
+            // Considera si quieres mostrar un alert aquí, ya que reiniciarPost no se llamará.
+            alert('Error al actualizar fecha límite en servidor: ' + (rta.data || 'Error desconocido'));
         }
-        menu.innerHTML = menuHtml;
+    } catch (error) {
+        const logError = `Excepción AJAX. Error: ${error.message || error}`;
+        console.error(logBase + '. ' + logError);
+        alert('Error de conexión al actualizar fecha límite.');
+    }
+}
 
-        positionElement(menu, button);
+// NUEVA FUNCIÓN (JS): Equivalente a tu calcularTextoTiempo de PHP
+window.calcularTextoTiempoJS = function(fechaReferenciaISO) {
+    // YYYY-MM-DD o null
+    if (!fechaReferenciaISO) return {txt: '', simbolo: '', claseNeg: ''};
 
-        menu.addEventListener('click', e => {
-            e.stopPropagation();
-            const target = e.target;
-            if (target.dataset.action === 'set-fecha') {
-                const tipoFecha = target.dataset.tipo;
-                closeActiveMenu();
-                showCalendar(button, li, tipoFecha);
-            }
-        });
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0); // Normalizar a medianoche
 
-        globalClickListener = event => {
-            if (!menu.contains(event.target) && event.target !== button) {
-                closeActiveMenu();
-            }
+    // Crear fechaReferencia también a medianoche para comparación correcta de días
+    const [anio, mes, dia] = fechaReferenciaISO.split('-').map(Number);
+    const fechaRef = new Date(anio, mes - 1, dia, 0, 0, 0, 0);
+
+    const difMs = fechaRef.getTime() - hoy.getTime();
+    const difDias = Math.round(difMs / (1000 * 60 * 60 * 24));
+
+    let txt = '',
+        simbolo = '',
+        claseNeg = '';
+    if (difDias === 0) txt = 'Hoy';
+    else if (difDias === 1) txt = 'Mañana';
+    else if (difDias === -1) {
+        txt = 'Ayer';
+        claseNeg = 'diaNegativo';
+    } else if (difDias > 1) txt = difDias + 'd';
+    else if (difDias < -1) {
+        txt = Math.abs(difDias) + 'd';
+        simbolo = '-';
+        claseNeg = 'diaNegativo';
+    }
+
+    return {txt: txt, simbolo: simbolo, claseNeg: claseNeg};
+}
+
+window.iniciarManejadoresFechaProximaHabito = function() {
+    document.querySelectorAll('.divProxima[data-tarea]').forEach(div => {
+        const listenerExistente = div._manejadorClicFechaProximaHabito;
+        if (listenerExistente) div.removeEventListener('click', listenerExistente);
+
+        div._manejadorClicFechaProximaHabito = function (event) {
+            event.stopPropagation();
+            window.hideAllOpenTaskMenus();
+
+            const tareaId = this.dataset.tarea;
+            const liTarea = this.closest('.POST-tarea');
+            const fechaActual = liTarea ? liTarea.dataset.proxima : null;
+            const spanTexto = this.querySelector('.textoProxima');
+
+            contextoCalendario = {
+                esParaTareaEspecifica: true,
+                idTarea: tareaId,
+                elementoSpanTexto: spanTexto,
+                elementoLiTarea: liTarea,
+                elementoDisparador: this,
+                tipoFecha: 'proxima'
+            };
+
+            mostrarCal(this, fechaActual || null);
         };
-        setTimeout(() => document.addEventListener('click', globalClickListener, true), 0);
-    }
 
-    /**
-     * Muestra un calendario dinámico para seleccionar una fecha.
-     * @param {HTMLElement} anchor El elemento ancla para posicionar el calendario.
-     * @param {HTMLElement} li El elemento <li> de la tarea.
-     * @param {string} tipoFecha El tipo de fecha a modificar ('fecha_limite' o 'fecha_proxima').
-     */
-    function showCalendar(anchor, li, tipoFecha) {
-        const tareaId = li.dataset.tareaId;
-        const fechaActualISO = tipoFecha === 'fecha_limite' ? li.dataset.fechaLimite : li.dataset.fechaProxima;
-        const fechaActual = fechaActualISO ? new Date(fechaActualISO + 'T00:00:00') : new Date();
+        div.addEventListener('click', div._manejadorClicFechaProximaHabito);
+    });
+}
 
-        let currentMonth = fechaActual.getMonth();
-        let currentYear = fechaActual.getFullYear();
+window.actualizarFechaProximaHabitoServidorUI = async function(idTarea, nuevaFechaISO, spanTexto, liTarea) {
+    const datos = {tareaId: idTarea, fechaProxima: nuevaFechaISO};
+    console.log(`actualizarFechaProximaHabitoServidorUI: Enviando AJAX para tarea ${idTarea}, fecha próxima: ${nuevaFechaISO}`);
 
-        const calendarWrapper = document.createElement('div');
-        calendarWrapper.className = 'menu-contextual raz-calendar';
-
-        function render() {
-            const primerDiaMes = new Date(currentYear, currentMonth, 1);
-            const diasEnMes = new Date(currentYear, currentMonth + 1, 0).getDate();
-            let diaSemanaPrimerDia = primerDiaMes.getDay();
-            diaSemanaPrimerDia = diaSemanaPrimerDia === 0 ? 6 : diaSemanaPrimerDia - 1;
-
-            const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-
-            calendarWrapper.innerHTML = `
-                <div class="cal-nav">
-                    <button class="cal-prev">&lt;</button>
-                    <span class="cal-mes-anio">${meses[currentMonth]} ${currentYear}</span>
-                    <button class="cal-next">&gt;</button>
-                </div>
-                <div class="cal-grid">
-                    ${['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa', 'Do'].map(d => `<b>${d}</b>`).join('')}
-                    ${Array(diaSemanaPrimerDia).fill('<span></span>').join('')}
-                    ${[...Array(diasEnMes).keys()].map(i => `<span class="cal-day">${i + 1}</span>`).join('')}
-                </div>
-                 <div class="cal-acciones">
-                    <button class="cal-borrar">Borrar</button>
-                    <button class="cal-hoy">Hoy</button>
-                </div>
-            `;
-
-            calendarWrapper.querySelectorAll('.cal-day').forEach(dayEl => {
-                dayEl.addEventListener('click', () => {
-                    const dia = parseInt(dayEl.textContent, 10);
-                    selectDate(new Date(currentYear, currentMonth, dia), tareaId, tipoFecha);
-                });
-            });
-
-            calendarWrapper.querySelector('.cal-prev').addEventListener('click', () => {
-                currentMonth--;
-                if (currentMonth < 0) {
-                    currentMonth = 11;
-                    currentYear--;
-                }
-                render();
-            });
-            calendarWrapper.querySelector('.cal-next').addEventListener('click', () => {
-                currentMonth++;
-                if (currentMonth > 11) {
-                    currentMonth = 0;
-                    currentYear++;
-                }
-                render();
-            });
-            calendarWrapper.querySelector('.cal-hoy').addEventListener('click', () => selectDate(new Date(), tareaId, tipoFecha));
-            calendarWrapper.querySelector('.cal-borrar').addEventListener('click', () => selectDate(null, tareaId, tipoFecha));
-        }
-
-        render();
-        positionElement(calendarWrapper, anchor);
-
-        globalClickListener = event => {
-            if (!calendarWrapper.contains(event.target) && event.target !== anchor) {
-                closeActiveMenu();
+    try {
+        // Asumimos que tendrás un endpoint PHP llamado 'modificarFechaProximaHabito'
+        const rta = await enviarAjax('modificarFechaProximaHabito', datos);
+        if (rta.success) {
+            const tiempo = calcularTextoTiempoJS(nuevaFechaISO);
+            if (spanTexto) {
+                spanTexto.textContent = tiempo.simbolo + tiempo.txt;
+                spanTexto.className = 'textoProxima ' + tiempo.claseNeg; // Asegúrate que la clase base es correcta
             }
-        };
-        setTimeout(() => document.addEventListener('click', globalClickListener, true), 0);
-    }
-
-    /**
-     * Envía la fecha seleccionada al backend y actualiza la UI.
-     * @param {Date|null} fecha La fecha seleccionada, o null para borrarla.
-     * @param {string} tareaId El ID de la tarea.
-     * @param {string} tipoFecha El campo de fecha a actualizar.
-     */
-    async function selectDate(fecha, tareaId, tipoFecha) {
-        closeActiveMenu();
-        const fechaISO = fecha ? `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}` : null;
-
-        try {
-            const payload = {[tipoFecha]: fechaISO};
-            await enviarAjax('PUT', `/tareas/${tareaId}`, payload);
-            window.location.reload(); // Recargar la página para una actualización sencilla y robusta
-        } catch (err) {
-            alert('Error al actualizar la fecha: ' + (err.error || 'Error desconocido'));
-            console.error(err);
+            if (liTarea) {
+                liTarea.dataset.proxima = nuevaFechaISO || '';
+                const difDias = nuevaFechaISO ? Math.round((new Date(nuevaFechaISO + 'T00:00:00').getTime() - new Date(new Date().setHours(0, 0, 0, 0)).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+                liTarea.setAttribute('dif', difDias);
+            }
+            console.log(`actualizarFechaProximaHabitoServidorUI: Tarea ${idTarea} (próxima) actualizada a ${nuevaFechaISO || 'ninguna'}.`);
+        } else {
+            alert('Error al actualizar fecha próxima en servidor: ' + (rta.data || 'Error desconocido'));
+            console.error(`actualizarFechaProximaHabitoServidorUI: Error AJAX para ${idTarea}`, rta);
         }
+    } catch (error) {
+        alert('Error de conexión al actualizar fecha próxima.');
+        console.error(`actualizarFechaProximaHabitoServidorUI: Excepción AJAX para ${idTarea}`, error);
     }
-
-    // Inyectar los estilos necesarios para el calendario y el menú contextual
-    const style = document.createElement('style');
-    style.textContent = `
-        .menu-contextual { background: white; border: 1px solid #ccc; box-shadow: 0 2px 5px rgba(0,0,0,0.15); border-radius: 4px; padding: 5px; }
-        .menu-contextual p { padding: 8px 12px; margin: 0; cursor: pointer; }
-        .menu-contextual p:hover { background-color: #f0f0f0; }
-        .raz-calendar .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
-        .raz-calendar .cal-grid span, .raz-calendar .cal-grid b { padding: 5px; border-radius: 50%; }
-        .raz-calendar .cal-grid span.cal-day { cursor: pointer; }
-        .raz-calendar .cal-grid span.cal-day:hover { background-color: #e9e9e9; }
-        .raz-calendar .cal-nav, .raz-calendar .cal-acciones { display: flex; justify-content: space-between; padding: 5px; align-items: center; }
-        .raz-calendar .cal-nav button, .raz-calendar .cal-acciones button { background: none; border: 1px solid #ddd; border-radius: 3px; cursor: pointer; }
-        .raz-calendar .cal-nav button:hover, .raz-calendar .cal-acciones button:hover { background: #f0f0f0; }
-    `;
-    document.head.appendChild(style);
-})();
+}

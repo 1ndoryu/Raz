@@ -4,37 +4,42 @@ use app\controller\TareaController;
 use app\controller\ViewController;
 use Webman\Route;
 
-Route::group('/tareas', function () {
-    // Crear tarea
-    Route::post('/', [TareaController::class, 'crearTarea']);
+// --- Tareas ---
 
-    // Completar tarea (antes que PUT/PATCH para evitar conflicto de {id})
-    Route::post('/{id}/completar', [TareaController::class, 'completarTarea']);
+// Crear tarea
+Route::post('/tareas', [TareaController::class, 'crearTarea']);
 
-    // Actualizar tarea
-    Route::put('/{id}', [TareaController::class, 'modificarTarea']);
-    Route::patch('/{id}', [TareaController::class, 'modificarTarea']);
+// Completar tarea
+Route::post('/tareas/{id}/completar', [TareaController::class, 'completarTarea']);
 
-    // Eliminar tarea
-    Route::delete('/{id}', [TareaController::class, 'borrarTarea']);
+// Actualizar tarea
+Route::put('/tareas/{id}', [TareaController::class, 'modificarTarea']);
+Route::patch('/tareas/{id}', [TareaController::class, 'modificarTarea']);
 
-    // Cambiar prioridad
-    Route::put('/{id}/prioridad', [TareaController::class, 'cambiarPrioridad']);
+// Eliminar tarea
+Route::delete('/tareas/{id}', [TareaController::class, 'borrarTarea']);
 
-    // Archivar / desarchivar
-    Route::post('/{id}/archivar', [TareaController::class, 'archivar']);
+// Cambiar prioridad
+Route::put('/tareas/{id}/prioridad', [TareaController::class, 'cambiarPrioridad']);
 
-    // Cambiar frecuencia de hábito
-    Route::put('/{id}/frecuencia', [TareaController::class, 'cambiarFrecuencia']);
+// Archivar / desarchivar
+Route::post('/tareas/{id}/archivar', [TareaController::class, 'archivar']);
 
-    // Asignar padre
-    Route::put('/{id}/padre', [TareaController::class, 'asignarPadre']);
+// Cambiar frecuencia de hábito
+Route::put('/tareas/{id}/frecuencia', [TareaController::class, 'cambiarFrecuencia']);
 
-    // Asignar sección
-    Route::put('/{id}/seccion', [TareaController::class, 'asignarSeccion']);
-});
+// Asignar padre
+Route::put('/tareas/{id}/padre', [TareaController::class, 'asignarPadre']);
+
+// Asignar sección
+Route::put('/tareas/{id}/seccion', [TareaController::class, 'asignarSeccion']);
+
+
+// --- Secciones ---
 
 // Ruta para renombrar una sección entera
 Route::put('/secciones', [TareaController::class, 'renombrarSeccion']);
 
+
+// --- Vista Principal ---
 Route::get('/', [ViewController::class, 'index']);

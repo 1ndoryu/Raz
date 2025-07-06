@@ -1,0 +1,307 @@
+:root {
+    --color-borde: #e1e4e8;
+    --color-fondo: #f6f8fa;
+    --color-texto: #333;
+    --color-texto-secundario: #586069;
+    --color-blanco: #fff;
+    --color-primario: #0366d6;
+    --radio-borde: 6px;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    margin: 0;
+    padding: 1rem;
+    background: var(--color-fondo);
+    color: var(--color-texto);
+}
+
+h1,
+h2 {
+    color: #111;
+    border-bottom: 1px solid var(--color-borde);
+    padding-bottom: 0.3em;
+}
+
+h2 {
+    font-size: 1.25rem;
+    margin-top: 1.5rem;
+}
+
+ul {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+/* --- Formulario de creación de Tareas --- */
+#formCrearTarea {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio-borde);
+    background: var(--color-blanco);
+    margin-bottom: 1rem;
+    position: relative;
+    /* Para posicionar menús */
+}
+
+#formCrearTarea input[name='titulo'] {
+    flex-grow: 1;
+    border: none;
+    outline: none;
+    font-size: 1rem;
+    background: transparent;
+}
+
+.form-selector {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: var(--radio-borde);
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: background-color 0.2s;
+}
+
+.form-selector:hover {
+    background-color: #f1f1f1;
+    border-color: #ddd;
+}
+
+.form-selector-menu {
+    display: none;
+    /* Oculto por defecto */
+    position: absolute;
+    top: 100%;
+    /* Abajo del formulario */
+    background-color: var(--color-blanco);
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio-borde);
+    box-shadow: 0 8px 24px rgba(149, 157, 165, 0.2);
+    z-index: 100;
+    padding: 4px;
+}
+
+.form-selector-menu button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 8px 12px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.form-selector-menu button:hover {
+    background-color: var(--color-primario);
+    color: var(--color-blanco);
+}
+
+/* Calendario */
+.cal-contenedor {
+    display: none;
+    position: absolute;
+    background: var(--color-blanco);
+    border: 1px solid var(--color-borde);
+    padding: 10px;
+    border-radius: var(--radio-borde);
+    box-shadow: 0 8px 24px rgba(149, 157, 165, 0.2);
+    z-index: 1000;
+    width: 280px;
+}
+
+.cal-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.cal-tabla {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.cal-tabla th,
+.cal-tabla td {
+    text-align: center;
+    padding: 5px;
+}
+
+.cal-tabla td > div {
+    cursor: pointer;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.cal-tabla td > div:hover {
+    background-color: #f0f0f0;
+}
+
+.cal-dia-hoy {
+    font-weight: bold;
+    border: 1px solid var(--color-primario);
+}
+
+.cal-dia-sel {
+    background-color: var(--color-primario);
+    color: var(--color-blanco);
+}
+
+.cal-acciones {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+}
+
+.cal-acciones button {
+    background: none;
+    border: 1px solid var(--color-borde);
+    border-radius: 4px;
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+.cal-acciones button:hover {
+    background: #f0f0f0;
+}
+
+/* Tareas */
+.tarea {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--color-borde);
+    display: flex;
+    flex-direction: column;
+}
+
+.tarea.dragging {
+    opacity: 0.5;
+    background: #d6eaff;
+}
+
+.tarea-contenido {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.drop-target-parent > .tarea-contenido {
+    background-color: #d4edda !important;
+    border: 1px dashed #155724;
+    border-radius: 4px;
+}
+
+.placeholder {
+    height: 40px;
+    /* Altura de una tarea aprox */
+    background-color: #e0f0ff;
+    list-style-type: none;
+    margin: 4px 0;
+    border-radius: 4px;
+    border: 1px dashed var(--color-primario);
+}
+
+.btn-completar {
+    background: none;
+    border: 1px solid #ccc;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    margin-right: 12px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    /* Evita que el botón se encoja */
+}
+
+/* Círculo interior para estado pendiente */
+.btn-completar span {
+    display: block;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1px solid var(--color-texto-secundario);
+    transition: all 0.2s ease-in-out;
+}
+
+.btn-completar:hover span {
+    background-color: #f0f0f0;
+}
+
+/* Estilo para Tarea Completada */
+.tarea.completada .btn-completar span {
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+.tarea.completada .btn-completar span::after {
+    content: '✓';
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+    display: block;
+    text-align: center;
+    line-height: 17px;
+}
+
+.titulo {
+    flex-grow: 1;
+    cursor: pointer;
+}
+
+.tarea.completada .titulo {
+    text-decoration: line-through;
+    color: #888;
+}
+
+.tarea.archivado {
+    opacity: 0.6;
+}
+
+.tarea.archivado .titulo {
+    font-style: italic;
+}
+
+.acciones-hover {
+    display: none;
+    margin-left: auto;
+}
+
+.tarea:hover .acciones-hover {
+    display: flex;
+    gap: 8px;
+}
+
+.acciones-hover button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+/* Jerarquía */
+.subtareas-lista {
+    padding-left: 32px;
+    /* Espacio para el botón de completar y margen */
+    border-left: 1px dashed #ccc;
+    margin-left: 10px;
+    /* Alineado con el botón de completar */
+    margin-top: 5px;
+}
+
+.subtarea {
+    background-color: #fafbfc;
+}

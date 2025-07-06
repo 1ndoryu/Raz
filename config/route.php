@@ -12,6 +12,16 @@ Route::post('/tareas', [TareaController::class, 'crearTarea']);
 // Completar tarea
 Route::post('/tareas/{id}/completar', [TareaController::class, 'completarTarea']);
 
+// Archivar / desarchivar
+Route::post('/tareas/{id}/archivar', [TareaController::class, 'archivar']);
+
+// Marcar un día específico de un hábito (completado, saltado, pendiente)
+Route::post('/tareas/{id}/marcar-dia', [TareaController::class, 'marcarDiaHabito']);
+
+// Guardar orden de tareas
+// ¡CORREGIDO! Ruta estática movida ANTES de la ruta variable para evitar conflictos.
+Route::put('/tareas/orden', [TareaController::class, 'guardarOrden']);
+
 // Actualizar tarea
 Route::put('/tareas/{id}', [TareaController::class, 'modificarTarea']);
 Route::patch('/tareas/{id}', [TareaController::class, 'modificarTarea']);
@@ -22,9 +32,6 @@ Route::delete('/tareas/{id}', [TareaController::class, 'borrarTarea']);
 // Cambiar prioridad
 Route::put('/tareas/{id}/prioridad', [TareaController::class, 'cambiarPrioridad']);
 
-// Archivar / desarchivar
-Route::post('/tareas/{id}/archivar', [TareaController::class, 'archivar']);
-
 // Cambiar frecuencia de hábito
 Route::put('/tareas/{id}/frecuencia', [TareaController::class, 'cambiarFrecuencia']);
 
@@ -33,9 +40,6 @@ Route::put('/tareas/{id}/padre', [TareaController::class, 'asignarPadre']);
 
 // Asignar sección
 Route::put('/tareas/{id}/seccion', [TareaController::class, 'asignarSeccion']);
-
-// Guardar orden de tareas
-Route::put('/tareas/orden', [TareaController::class, 'guardarOrden']);
 
 
 // --- Secciones ---

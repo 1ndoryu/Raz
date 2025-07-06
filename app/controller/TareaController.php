@@ -121,6 +121,35 @@ class TareaController
     }
 
     /**
+     * Marca un día específico de un hábito como completado, saltado o pendiente.
+     * Ruta: POST /tareas/{id}/marcar-dia
+     */
+    public function marcarDiaHabito(Request $request, int $id): Response
+    {
+        try {
+            $tarea = Tarea::find($id);
+            if (!$tarea) {
+                return new Response(404, ['Content-Type' => 'application/json'], json_encode(['success' => false, 'error' => 'Tarea no encontrada.']));
+            }
+
+            $fecha = $request->input('fecha');
+            $estado = $request->input('estado'); // 'completado', 'saltado', 'pendiente'
+
+            $this->tareaService->marcarDiaHabito($tarea, $fecha, $estado);
+
+            // Devolver la tarea actualizada con sus nuevas fechas
+            // para que el frontend pueda recalcular lo que necesite.
+            return new Response(200, ['Content-Type' => 'application/json'], json_encode([
+                'success' => true,
+                'data' => $tarea->fresh(), // .fresh() recarga el modelo desde la BD
+            ]));
+        } catch (Exception $e) {
+            $codigo = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 500;
+            return new Response($codigo, ['Content-Type' => 'application/json'], json_encode(['success' => false, 'error' => $e->getMessage()]));
+        }
+    }
+
+    /**
      * Asigna el padre de una tarea.
      * Ruta: PUT /tareas/{id}/padre
      */

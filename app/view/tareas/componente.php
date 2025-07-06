@@ -1,8 +1,8 @@
 <?php
 
 /**
- * @var \app\model\Tarea $tarea      La tarea a renderizar.
- * @var callable           $renderTarea La función para renderizar las subtareas.
+ * @var \app\model\Tarea $tarea  La tarea a renderizar.
+ * @var callable     $renderTarea La función para renderizar las subtareas.
  */
 
 // Lógica para determinar clases y atributos, similar al "Proyecto viejo/code/TaskHelper.php"
@@ -11,6 +11,7 @@ $esArchivada = $tarea->archivado;
 $esSubtarea = !is_null($tarea->padre_id);
 // Una tarea es padre si su colección de subtareas (children, poblada en el controller) no está vacía.
 $esPadre = isset($tarea->children) && $tarea->children->isNotEmpty();
+$esHabito = in_array($tarea->tipo, ['habito', 'habito flexible', 'habito rigido']);
 
 $clases = ['tarea', 'draggable-element'];
 if ($esCompletada) $clases[] = 'completada';
@@ -46,11 +47,45 @@ if ($esSubtarea && $tarea->padre) {
 
         <span class="titulo" contenteditable="false"><?= htmlspecialchars($tarea->titulo) ?></span>
 
+        <?php if ($esHabito) : ?>
+            <div class="habito-dias-visualizacion">
+                <?php
+                // Lógica replicada de TaskHelper.php para mostrar los últimos 5 días
+                $maxDiasMostrar = 5;
+                $hoy = new DateTime();
+                $diasParaMostrar = [];
+
+                for ($i = 0; $i < $maxDiasMostrar; $i++) {
+                    $fechaDia = (clone $hoy)->modify("-$i days")->format('Y-m-d');
+                    $diasParaMostrar[] = $fechaDia;
+                }
+                $diasParaMostrar = array_reverse($diasParaMostrar); // Para mostrar de más antiguo a más reciente
+
+                $fechasCompletado = $tarea->fechas_completado ?? [];
+                $fechasSaltado = $tarea->fechas_saltado ?? [];
+
+                foreach ($diasParaMostrar as $fechaDia) {
+                    $estadoDia = 'pendiente';
+                    $claseEstado = 'estado-pendiente';
+
+                    if (in_array($fechaDia, $fechasCompletado)) {
+                        $estadoDia = 'completado';
+                        $claseEstado = 'estado-completado';
+                    } elseif (in_array($fechaDia, $fechasSaltado)) {
+                        $estadoDia = 'saltado';
+                        $claseEstado = 'estado-saltado';
+                    }
+
+                    echo '<span class="dia-habito-item ' . $claseEstado . '" data-fecha="' . $fechaDia . '" data-estado="' . $estadoDia . '" title="' . $fechaDia . '"></span>';
+                }
+                ?>
+            </div>
+        <?php endif; ?>
+
         <div class="acciones-hover">
             <button class="btn-cambiar-prioridad" title="Cambiar prioridad">⭐</button>
-            <?php
-            $esHabito = in_array($tarea->tipo, ['habito', 'habito flexible', 'habito rigido']);
-            if ($esHabito): ?>
+            <button class="btn-gestionar-fechas" title="Gestionar fechas">🗓️</button>
+            <?php if ($esHabito): ?>
                 <button class="btn-cambiar-frecuencia" title="Cambiar frecuencia">🔁</button>
             <?php endif; ?>
             <button class="btn-archivar" title="Archivar">📥</button>

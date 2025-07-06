@@ -148,6 +148,73 @@ class TareaService
     }
 
     /**
+     * Marca el estado de un día específico para una tarea de tipo hábito.
+     *
+     * @param Tarea $tarea
+     * @param string $fecha 'Y-m-d'
+     * @param string $estado 'completado', 'saltado', 'pendiente'
+     * @return Tarea
+     * @throws Exception
+     */
+    public function marcarDiaHabito(Tarea $tarea, string $fecha, string $estado): Tarea
+    {
+        if (!in_array($tarea->tipo, ['habito', 'habito flexible', 'habito rigido'])) {
+            throw new Exception('Esta acción solo es para hábitos.', 422);
+        }
+
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
+            throw new Exception('Formato de fecha inválido. Use YYYY-MM-DD.', 422);
+        }
+
+        if (!in_array($estado, ['completado', 'saltado', 'pendiente'])) {
+            throw new Exception("Estado '$estado' inválido.", 422);
+        }
+
+        $fechasCompletado = $tarea->fechas_completado ?? [];
+        $fechasSaltado = $tarea->fechas_saltado ?? [];
+
+        // Quitar la fecha de ambos arrays para evitar inconsistencias
+        if (($key = array_search($fecha, $fechasCompletado)) !== false) {
+            unset($fechasCompletado[$key]);
+        }
+        if (($key = array_search($fecha, $fechasSaltado)) !== false) {
+            unset($fechasSaltado[$key]);
+        }
+
+        // Añadir la fecha al array correspondiente si no es 'pendiente'
+        if ($estado === 'completado') {
+            $fechasCompletado[] = $fecha;
+        } elseif ($estado === 'saltado') {
+            $fechasSaltado[] = $fecha;
+        }
+
+        // Reindexar y ordenar para mantener consistencia
+        sort($fechasCompletado);
+        sort($fechasSaltado);
+
+        $tarea->fechas_completado = array_values(array_unique($fechasCompletado));
+        $tarea->fechas_saltado = array_values(array_unique($fechasSaltado));
+        $tarea->veces_completado = count($tarea->fechas_completado);
+
+        // Recalcular la fecha_proxima basada en la última fecha completada
+        $frecuencia = $tarea->frecuencia > 0 ? $tarea->frecuencia : 1;
+        if (!empty($tarea->fechas_completado)) {
+            $ultimaFechaCompletada = max($tarea->fechas_completado);
+            $tarea->fecha_proxima = date('Y-m-d', strtotime("$ultimaFechaCompletada +$frecuencia days"));
+        } else {
+            // Si no hay ninguna fecha completada, la próxima podría ser hoy + frecuencia,
+            // o podríamos dejarla como está, dependiendo de la lógica deseada.
+            // Por consistencia con el proyecto viejo, la recalculamos desde hoy.
+            $tarea->fecha_proxima = date('Y-m-d', strtotime("today +$frecuencia days"));
+        }
+
+        $tarea->save();
+
+        return $tarea;
+    }
+
+
+    /**
      * Asigna un nuevo padre a una tarea, realizando validaciones.
      *
      * @param Tarea $hija

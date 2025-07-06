@@ -21,45 +21,50 @@ $capsule->bootEloquent();
 
 $schema = Capsule::schema();
 
-// --- INICIO DE MODIFICACIÓN ---
-// Eliminar la tabla si ya existe para asegurar una recreación limpia
+// --- Tabla Tareas ---
 if ($schema->hasTable('tareas')) {
     $schema->drop('tareas');
     echo "[create_tables] Tabla 'tareas' existente eliminada.\n";
 }
-// --- FIN DE MODIFICACIÓN ---
 
-// Crear tabla 'tareas' si no existe
-if (!$schema->hasTable('tareas')) {
-    $schema->create('tareas', function (Blueprint $table) {
-        $table->bigIncrements('id');
-        $table->string('titulo');
-        $table->string('importancia')->default('media');
-        $table->integer('impnum')->default(2); // Valor numérico para ordenar por importancia
-        $table->string('tipo')->default('una vez');
-        $table->string('estado')->default('pendiente');
-        $table->unsignedBigInteger('padre_id')->nullable();
-        $table->string('seccion')->nullable();
-        $table->integer('frecuencia')->default(1);
-        $table->text('descripcion')->nullable();
-        $table->date('fecha')->nullable(); // Fecha de creación o último completado
-        $table->date('fecha_limite')->nullable(); // Para metas
-        $table->date('fecha_proxima')->nullable(); // Para hábitos
-        $table->integer('veces_completado')->default(0);
-        $table->json('fechas_completado')->nullable(); // Historial de fechas de hábitos
-        $table->boolean('archivado')->default(false);
+$schema->create('tareas', function (Blueprint $table) {
+    $table->bigIncrements('id');
+    $table->string('titulo');
+    $table->string('importancia')->default('media');
+    $table->integer('impnum')->default(2);
+    $table->string('tipo')->default('una vez');
+    $table->string('estado')->default('pendiente');
+    $table->unsignedBigInteger('padre_id')->nullable();
+    $table->string('seccion')->nullable();
+    $table->integer('frecuencia')->default(1);
+    $table->text('descripcion')->nullable();
+    $table->date('fecha')->nullable();
+    $table->date('fecha_limite')->nullable();
+    $table->date('fecha_proxima')->nullable();
+    $table->integer('veces_completado')->default(0);
+    $table->json('fechas_completado')->nullable();
+    $table->json('fechas_saltado')->nullable(); // Nuevo campo para hábitos
+    $table->boolean('archivado')->default(false);
 
-        // Índices
-        $table->index('padre_id');
-        $table->index('seccion');
-        $table->index('estado');
-        $table->index('tipo');
+    $table->index('padre_id');
+    $table->index('seccion');
+    $table->index('estado');
+    $table->index('tipo');
 
-        // Clave foránea a si misma
-        $table->foreign('padre_id')->references('id')->on('tareas')->onDelete('cascade');
-    });
+    $table->foreign('padre_id')->references('id')->on('tareas')->onDelete('cascade');
+});
+echo "[create_tables] Tabla 'tareas' creada/recreada correctamente.\n";
 
-    echo "[create_tables] Tabla 'tareas' creada correctamente con todos los campos.\n";
-} else {
-    echo "[create_tables] La tabla 'tareas' ya existe, nada que hacer.\n";
+
+// --- Tabla Settings ---
+if ($schema->hasTable('settings')) {
+    $schema->drop('settings');
+    echo "[create_tables] Tabla 'settings' existente eliminada.\n";
 }
+
+$schema->create('settings', function (Blueprint $table) {
+    $table->string('key')->primary();
+    $table->json('value')->nullable();
+});
+
+echo "[create_tables] Tabla 'settings' creada/recreada correctamente.\n";

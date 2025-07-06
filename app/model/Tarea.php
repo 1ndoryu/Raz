@@ -26,16 +26,18 @@ class Tarea extends Model
         'fecha_proxima',
         'veces_completado',
         'fechas_completado',
+        'fechas_saltado', // Nuevo campo
         'archivado',
     ];
 
     // Conversiones de tipo para atributos
     protected $casts = [
-        'archivado' => 'boolean',
+        'archivado'         => 'boolean',
         'fechas_completado' => 'array',
-        'frecuencia' => 'integer',
-        'veces_completado' => 'integer',
-        'impnum' => 'integer',
+        'fechas_saltado'    => 'array', // Nuevo cast
+        'frecuencia'        => 'integer',
+        'veces_completado'  => 'integer',
+        'impnum'            => 'integer',
     ];
 
     // Deshabilitar timestamps si la tabla no los utiliza

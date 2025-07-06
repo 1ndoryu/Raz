@@ -2,6 +2,7 @@
 
 namespace App\services;
 
+use app\model\Setting;
 use app\model\Tarea;
 use Exception;
 use Illuminate\Database\Eloquent\Collection;
@@ -223,5 +224,21 @@ class TareaService
         }
 
         return Tarea::where('seccion', $nombreOriginal)->update(['seccion' => $nombreNuevo]);
+    }
+
+    /**
+     * Guarda el orden de las tareas.
+     *
+     * @param array $ordenIds
+     * @return void
+     */
+    public function guardarOrdenTareas(array $ordenIds): void
+    {
+        // Limpia los IDs para asegurar que solo sean enteros.
+        $ids = array_map('intval', $ordenIds);
+        Setting::updateOrCreate(
+            ['key' => 'task_order'],
+            ['value' => $ids]
+        );
     }
 }

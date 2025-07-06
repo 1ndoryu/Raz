@@ -39,7 +39,7 @@ class TareaController
 
             return new Response(201, ['Content-Type' => 'application/json'], json_encode([
                 'success' => true,
-                'data'  => [
+                'data'    => [
                     'id' => $tarea->id,
                     'html' => $html,
                 ],
@@ -182,11 +182,29 @@ class TareaController
 
             return new Response(200, ['Content-Type' => 'application/json'], json_encode([
                 'success' => true,
-                'data'  => ['mensaje' => "Sección renombrada. $numActualizadas tareas actualizadas."],
+                'data'    => ['mensaje' => "Sección renombrada. $numActualizadas tareas actualizadas."],
             ]));
         } catch (Exception $e) {
             $codigo = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 500;
             return new Response($codigo, ['Content-Type' => 'application/json'], json_encode(['success' => false, 'error' => $e->getMessage()]));
+        }
+    }
+
+    /**
+     * Guarda el orden de las tareas principales.
+     * Ruta: PUT /tareas/orden
+     */
+    public function guardarOrden(Request $request): Response
+    {
+        try {
+            $ordenIds = $request->input('orden', []);
+            if (!is_array($ordenIds)) {
+                return new Response(422, [], json_encode(['success' => false, 'error' => 'El orden debe ser un array de IDs.']));
+            }
+            $this->tareaService->guardarOrdenTareas($ordenIds);
+            return new Response(200, ['Content-Type' => 'application/json'], json_encode(['success' => true, 'data' => ['mensaje' => 'Orden guardado.']]));
+        } catch (Exception $e) {
+            return new Response(500, ['Content-Type' => 'application/json'], json_encode(['success' => false, 'error' => $e->getMessage()]));
         }
     }
 

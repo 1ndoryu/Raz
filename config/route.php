@@ -34,6 +34,9 @@ Route::put('/tareas/{id}/padre', [TareaController::class, 'asignarPadre']);
 // Asignar sección
 Route::put('/tareas/{id}/seccion', [TareaController::class, 'asignarSeccion']);
 
+// Guardar orden de tareas
+Route::put('/tareas/orden', [TareaController::class, 'guardarOrden']);
+
 
 // --- Secciones ---
 

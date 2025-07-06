@@ -1,5 +1,5 @@
 // public/js/taskDragDrop.js
-(function() {
+(function () {
     console.log('[Raziel] Módulo de Arrastrar y Soltar inicializado.');
     const listaTareasContainer = document.getElementById('listaTareas');
     if (!listaTareasContainer) {
@@ -97,18 +97,18 @@
         }
     };
 
-    // --- MODIFICADO: `dragEnd` ahora actualiza el DOM en lugar de recargar la página ---
     const dragEnd = async e => {
         if (!isMouseDown) return;
-        
+
         const wasDragging = isDragging;
-        
-        // Obtenemos el destino final antes de limpiar el placeholder
-        const { currentTarget, isSubtaskTarget } = getDropTarget(e);
+
+        const {
+            currentTarget,
+            isSubtaskTarget
+        } = getDropTarget(e);
         const placeholderFinalParent = placeholder ? placeholder.parentNode : null;
         const placeholderFinalSibling = placeholder ? placeholder.nextSibling : null;
 
-        // Limpieza visual inmediata y de listeners
         cleanUpVisuals();
 
         if (!wasDragging || !draggedElement) {
@@ -125,7 +125,7 @@
                 // --- ACCIÓN: ANIDAR TAREA ---
                 const parentElement = currentTarget;
                 const parentId = parentElement.dataset.tareaId;
-                await asignarPadre(draggedId, parentId);
+                await window.asignarPadreGlobal(draggedId, parentId);
 
                 let subtasksList = parentElement.querySelector('ul.subtareas-lista');
                 if (!subtasksList) {
@@ -150,15 +150,17 @@
                 const seccionAnterior = draggedElement.dataset.seccion;
                 const eraSubtarea = !!draggedElement.dataset.padreId;
 
-                if (eraSubtarea) await asignarPadre(draggedId, null);
+                if (eraSubtarea) await window.asignarPadreGlobal(draggedId, null);
                 if (seccionAnterior !== seccionNueva) await asignarSeccion(draggedId, seccionNueva);
 
                 draggedElement.classList.remove('subtarea');
                 draggedElement.dataset.padreId = '';
                 draggedElement.dataset.seccion = seccionNueva;
             }
-            
-            if (!domUpdated) {
+
+            if (domUpdated) {
+                await guardarOrdenTareas(); // Guardar el nuevo orden de todas las tareas
+            } else {
                 console.log('[DragDrop] Drop en ubicación no válida. No se realizaron cambios.');
             }
 
@@ -178,11 +180,10 @@
         if (draggedElementClone) draggedElementClone.remove();
         if (draggedElement) draggedElement.classList.remove('dragging');
         document.querySelectorAll('.drop-target-parent').forEach(el => el.classList.remove('drop-target-parent'));
-        
+
         draggedElementClone = null;
     }
-    
-    // NUEVO: Función para resetear el estado al final
+
     function resetState() {
         draggedElement = null;
         isMouseDown = false;
@@ -191,30 +192,33 @@
         startY = 0;
     }
 
-    // --- MODIFICADO: `getDropTarget` con una condición más estricta para anidar ---
     const getDropTarget = e => {
         const elements = document.elementsFromPoint(e.clientX, e.clientY);
         const targetLi = elements.find(el => el.matches('li.tarea') && el !== draggedElement && !el.classList.contains('dragging'));
 
         if (!targetLi || draggedElement.contains(targetLi)) {
-            return { currentTarget: null, isSubtaskTarget: false };
+            return {
+                currentTarget: null,
+                isSubtaskTarget: false
+            };
         }
 
-        // Reglas: No se puede anidar en una subtarea, y una tarea con hijos no puede ser anidada.
         if (targetLi.classList.contains('subtarea') || draggedElement.classList.contains('tarea-padre')) {
-            return { currentTarget: targetLi, isSubtaskTarget: false };
+            return {
+                currentTarget: targetLi,
+                isSubtaskTarget: false
+            };
         }
-        
+
         const rect = targetLi.getBoundingClientRect();
-        
-        // Condición de anidación: el cursor debe moverse intencionadamente a la derecha
-        // Y estar sobre la zona de indentación del elemento destino.
-        const movedRight = e.clientX > startX + 25; // El usuario debe arrastrar hacia la derecha
-        const inIndentZone = e.clientX > rect.left + 30; // Y estar en el área de anidación
-        
+        const movedRight = e.clientX > startX + 25;
+        const inIndentZone = e.clientX > rect.left + 30;
         const isSubtaskTarget = movedRight && inIndentZone;
-        
-        return { currentTarget: targetLi, isSubtaskTarget };
+
+        return {
+            currentTarget: targetLi,
+            isSubtaskTarget
+        };
     };
 
     const moveClone = e => {
@@ -224,26 +228,36 @@
         }
     };
 
-    const asignarPadre = async (hijoId, padreId) => {
-        try {
-            const respuesta = await enviarAjax('PUT', `/tareas/${hijoId}/padre`, { padre_id: padreId });
-            if (!respuesta.success) console.error(`[DragDrop] Error al anidar tarea: ${respuesta.error || 'Error desconocido'}`);
-        } catch (err) {
-            console.error('[DragDrop] Error de red al anidar la tarea:', err);
-            throw err; // Relanzar para que dragEnd lo capture
-        }
-    };
-
     const asignarSeccion = async (tareaId, seccion) => {
         if (!seccion || seccion === '') return;
         try {
-            const respuesta = await enviarAjax('PUT', `/tareas/${tareaId}/seccion`, { seccion: seccion });
+            const respuesta = await enviarAjax('PUT', `/tareas/${tareaId}/seccion`, {
+                seccion: seccion
+            });
             if (!respuesta.success) console.error(`[DragDrop] Error al cambiar sección: ${respuesta.error || 'Error desconocido'}`);
         } catch (err) {
             console.error('[DragDrop] Error de red al cambiar de sección:', err);
-            throw err; // Relanzar para que dragEnd lo capture
+            throw err;
         }
     };
+
+    async function guardarOrdenTareas() {
+        const orderedIds = Array.from(document.querySelectorAll('#listaTareas li.tarea'))
+            .filter(li => !li.classList.contains('subtarea')) // Solo tareas raíz
+            .map(li => li.dataset.tareaId);
+
+        console.log('[DragDrop] Guardando nuevo orden de tareas raíz:', orderedIds);
+
+        try {
+            await enviarAjax('PUT', '/tareas/orden', {
+                orden: orderedIds
+            });
+        } catch (err) {
+            console.error('[DragDrop] Falló al guardar el orden de las tareas:', err.error || err);
+            // Considerar notificar al usuario que el orden no se pudo guardar.
+        }
+    }
+
 
     listaTareasContainer.addEventListener('mousedown', dragStart);
 })();
